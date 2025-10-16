@@ -46,5 +46,4 @@ certificates
 post_migrator.py
 
 # Server
-server/node_modulesOPENAI_API_KEY=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
 firecrawl-responses-api/.env
