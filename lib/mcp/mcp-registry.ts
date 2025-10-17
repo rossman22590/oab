@@ -78,7 +78,7 @@ export const officialMCPServers: MCPServerConfig[] = [
       'install_package',
     ],
     category: 'automation',
-    enabled: true,
+    enabled: false,
     official: true,
     documentation: 'https://e2b.dev/docs/mcp',
   },

@@ -147,33 +147,89 @@ export default function Step2Placeholder({ onReset, onCreateWorkflow, onLoadWork
       </div>
 
       {/* Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 mb-32">
-        {/* Create Workflow Tile - Always first */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{
-            duration: 0.5,
-            delay: 0,
-            ease: "easeOut"
-          }}
-          className="relative cursor-pointer"
-          onClick={onCreateWorkflow}
-        >
-          <div className="bg-accent-white rounded-12 p-24 border-2 border-dashed border-border-light hover:border-heat-100 transition-all h-full flex items-center justify-center min-h-[160px]">
-            <div className="text-center">
-              <div className="w-48 h-48 rounded-full bg-heat-4 flex items-center justify-center mx-auto mb-12">
-                <svg className="w-24 h-24 text-heat-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <h3 className="text-label-large text-accent-black font-medium">Create Workflow</h3>
+      {activeTab === "runs" ? (
+        /* Workflow Runs - List Layout */
+        <div className="max-w-4xl mx-auto mb-32">
+          {workflowRuns.length > 0 ? (
+            <div className="space-y-12">
+              {workflowRuns.map((run, index) => (
+                <motion.div
+                  key={run.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    delay: index * 0.05,
+                    ease: "easeOut"
+                  }}
+                  className="relative cursor-pointer"
+                  onClick={() => setSelectedRun(run)}
+                >
+                  <div className="bg-accent-white rounded-12 p-20 border border-border-faint hover:border-accent-100 hover:shadow-lg hover:shadow-accent-100/20 transition-all group">
+                    <div className="flex items-center justify-between gap-16">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-12 mb-8">
+                          <h3 className="text-lg font-semibold text-accent-black">{run.workflowName}</h3>
+                          <span className={`px-10 py-4 rounded-6 text-xs font-medium capitalize ${getStatusBg(run.status)} ${getStatusColor(run.status)}`}>
+                            {run.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-16 text-body-small text-black-alpha-48">
+                          <span>Started: {new Date(run.startedAt).toLocaleString()}</span>
+                          {run.duration && (
+                            <>
+                              <span>•</span>
+                              <span>Duration: {run.duration}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-8 text-accent-100 group-hover:text-accent-200">
+                        <span className="text-sm font-medium">View details</span>
+                        <svg className="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          </div>
-        </motion.div>
+          ) : (
+            <div className="flex items-center justify-center min-h-[160px]">
+              <p className="text-body-medium text-black-alpha-48">No workflow runs yet</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Workflows and Templates - Grid Layout */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 mb-32">
+          {/* Create Workflow Tile - Always first */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{
+              duration: 0.5,
+              delay: 0,
+              ease: "easeOut"
+            }}
+            className="relative cursor-pointer"
+            onClick={onCreateWorkflow}
+          >
+            <div className="bg-accent-white rounded-12 p-24 border-2 border-dashed border-border-light hover:border-heat-100 transition-all h-full flex items-center justify-center min-h-[160px]">
+              <div className="text-center">
+                <div className="w-48 h-48 rounded-full bg-heat-4 flex items-center justify-center mx-auto mb-12">
+                  <svg className="w-24 h-24 text-heat-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <h3 className="text-label-large text-accent-black font-medium">Create Workflow</h3>
+              </div>
+            </div>
+          </motion.div>
 
-        {/* Show Workflows, Templates, or Runs based on tab */}
-        {activeTab === "workflows" ? (
+          {/* Show Workflows or Templates based on tab */}
+          {activeTab === "workflows" ? (
           workflows.length > 0 ? (
             workflows.map((workflow, index) => (
               <motion.div
@@ -234,55 +290,9 @@ export default function Step2Placeholder({ onReset, onCreateWorkflow, onLoadWork
               </div>
             </motion.div>
           ))
-        ) : (
-          workflowRuns.length > 0 ? (
-            workflowRuns.map((run, index) => (
-              <motion.div
-                key={run.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  duration: 0.5,
-                  delay: (index + 1) * 0.1,
-                  ease: "easeOut"
-                }}
-                className="relative cursor-pointer"
-                onClick={() => setSelectedRun(run)}
-              >
-                <div className="bg-accent-white rounded-12 p-24 border border-border-faint hover:border-accent-100 hover:shadow-lg hover:shadow-accent-100/20 transition-all h-full min-h-[160px] group">
-                  <div className="absolute inset-0 rounded-12 bg-gradient-to-br from-accent-100/5 to-primary-100/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative">
-                    <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-label-large text-accent-black font-medium">{run.workflowName}</h3>
-                      <span className={`px-8 py-4 rounded-6 text-xs font-medium capitalize ${getStatusBg(run.status)} ${getStatusColor(run.status)}`}>
-                        {run.status}
-                      </span>
-                    </div>
-                    <p className="text-body-small text-black-alpha-48 mb-8">
-                      Started: {new Date(run.startedAt).toLocaleString()}
-                    </p>
-                    {run.duration && (
-                      <p className="text-body-small text-black-alpha-32">
-                        Duration: {run.duration}
-                      </p>
-                    )}
-                    <div className="mt-12 inline-flex items-center gap-6 text-body-small text-accent-100 group-hover:text-accent-200">
-                      <span>View details</span>
-                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))
-          ) : (
-            <div className="col-span-1 lg:col-span-3 flex items-center justify-center min-h-[160px]">
-              <p className="text-body-medium text-black-alpha-48">No workflow runs yet</p>
-            </div>
-          )
-        )}
-      </div>
+        ) : null}
+        </div>
+      )}
 
       {/* Action Button */}
       <motion.div
