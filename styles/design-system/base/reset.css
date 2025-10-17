@@ -54,11 +54,12 @@ a:not([class]) {
 img,
 picture,
 video,
-canvas,
-svg {
+canvas {
   display: block;
   max-width: 100%;
 }
+
+/* SVG: DO NOT TOUCH - let Tailwind handle sizing */
 
 /* Inherit fonts for inputs and buttons */
 input,

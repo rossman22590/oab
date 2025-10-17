@@ -5,29 +5,36 @@ import { query, mutation } from "./_generated/server";
  * Workflow CRUD Operations
  */
 
-// Get all workflows (filtered by user if authenticated)
+// Get all workflows (filtered by user if authenticated, or all non-template workflows if not)
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
 
-    // If authenticated, only show user's workflows (exclude templates and undefined userId)
+    // If authenticated, only show user's workflows (exclude templates)
     if (identity) {
-      const workflows = await ctx.db
+      // Get all workflows for this user
+      const allWorkflows = await ctx.db
         .query("workflows")
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("userId"), identity.subject),
-            q.neq(q.field("isTemplate"), true)
-          )
-        )
+        .filter((q) => q.eq(q.field("userId"), identity.subject))
         .order("desc")
         .collect();
+      
+      // Filter out templates in JavaScript (more reliable than Convex query filter)
+      const workflows = allWorkflows.filter(w => w.isTemplate !== true);
       return workflows;
     }
 
-    // If not authenticated, return empty array
-    return [];
+    // If not authenticated, return all non-template workflows (for development/testing)
+    // In production, you may want to return empty array instead
+    const allWorkflows = await ctx.db
+      .query("workflows")
+      .order("desc")
+      .collect();
+    
+    // Filter out templates and workflows with userId (those belong to specific users)
+    const workflows = allWorkflows.filter(w => w.isTemplate !== true && !w.userId);
+    return workflows;
   },
 });
 

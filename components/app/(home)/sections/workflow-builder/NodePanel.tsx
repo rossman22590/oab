@@ -52,17 +52,38 @@ export default function NodePanel({
     user?.id ? { userId: user.id } : "skip"
   );
 
-  // Get available models based on active API keys
+  // Fetch server config to check environment variables
+  const [serverConfig, setServerConfig] = useState<{
+    anthropicConfigured: boolean;
+    openaiConfigured: boolean;
+    groqConfigured: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    const loadServerConfig = async () => {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const config = await response.json();
+          setServerConfig(config);
+        }
+      } catch (error) {
+        console.warn('Failed to load server config:', error);
+      }
+    };
+    loadServerConfig();
+  }, []);
+
+  // Get available models based on active API keys (user keys + server env keys)
   const getAvailableModels = () => {
-    if (!userLLMKeys) return [];
-
     const models: { provider: string; models: Array<{ id: string; name: string }> }[] = [];
+    const providersAdded = new Set<string>();
 
-    // Check for active keys and add corresponding models
-    const activeKeys = userLLMKeys.filter(key => key.isActive);
+    // Check for active user keys first
+    const activeKeys = userLLMKeys?.filter(key => key.isActive) || [];
 
     activeKeys.forEach(key => {
-      if (key.provider === 'anthropic') {
+      if (key.provider === 'anthropic' && !providersAdded.has('anthropic')) {
         models.push({
           provider: 'Anthropic',
           models: [
@@ -70,7 +91,8 @@ export default function NodePanel({
             { id: 'anthropic/claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
           ]
         });
-      } else if (key.provider === 'openai') {
+        providersAdded.add('anthropic');
+      } else if (key.provider === 'openai' && !providersAdded.has('openai')) {
         models.push({
           provider: 'OpenAI',
           models: [
@@ -78,15 +100,50 @@ export default function NodePanel({
             { id: 'openai/gpt-4o-mini', name: 'GPT-5 Mini' },
           ]
         });
-      } else if (key.provider === 'groq') {
+        providersAdded.add('openai');
+      } else if (key.provider === 'groq' && !providersAdded.has('groq')) {
         models.push({
           provider: 'Groq',
           models: [
             { id: 'groq/openai/gpt-oss-120b', name: 'GPT OSS 120B' },
           ]
         });
+        providersAdded.add('groq');
       }
     });
+
+    // Fall back to server config (environment variables)
+    if (serverConfig) {
+      if (serverConfig.anthropicConfigured && !providersAdded.has('anthropic')) {
+        models.push({
+          provider: 'Anthropic',
+          models: [
+            { id: 'anthropic/claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5' },
+            { id: 'anthropic/claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
+          ]
+        });
+        providersAdded.add('anthropic');
+      }
+      if (serverConfig.openaiConfigured && !providersAdded.has('openai')) {
+        models.push({
+          provider: 'OpenAI',
+          models: [
+            { id: 'openai/gpt-4o', name: 'GPT-5' },
+            { id: 'openai/gpt-4o-mini', name: 'GPT-5 Mini' },
+          ]
+        });
+        providersAdded.add('openai');
+      }
+      if (serverConfig.groqConfigured && !providersAdded.has('groq')) {
+        models.push({
+          provider: 'Groq',
+          models: [
+            { id: 'groq/openai/gpt-oss-120b', name: 'GPT OSS 120B' },
+          ]
+        });
+        providersAdded.add('groq');
+      }
+    }
 
     return models;
   };

@@ -95,27 +95,6 @@ export async function POST(
 
         const workflow = workflowData as any;
 
-        // Send start event
-        sendEvent('workflow_started', {
-          workflowId,
-          workflowName: workflow.name,
-          totalNodes: workflow.nodes.length,
-          timestamp: new Date().toISOString(),
-        });
-
-        // Create a custom execution with progress callbacks
-        const executionId = `exec_${Date.now()}`;
-        const nodeResults: Record<string, any> = {};
-
-        // Get API keys
-        const apiKeys = {
-          anthropic: process.env.ANTHROPIC_API_KEY,
-          groq: process.env.GROQ_API_KEY,
-          openai: process.env.OPENAI_API_KEY,
-          firecrawl: process.env.FIRECRAWL_API_KEY,
-          arcade: process.env.ARCADE_API_KEY,
-        };
-
         // Prepare initial input - pass as object if it's an object, otherwise as string
         let initialInput: any = '';
         if (typeof inputs === 'object' && Object.keys(inputs).length > 0) {
@@ -127,8 +106,40 @@ export async function POST(
           initialInput = inputs.url || inputs.input || '';
         }
 
+        // Send start event
+        sendEvent('workflow_started', {
+          workflowId,
+          workflowName: workflow.name,
+          totalNodes: workflow.nodes.length,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Create execution record in Convex
+        const executionId = await convex.mutation(api.executions.createExecution, {
+          workflowId: workflowDoc._id,
+          input: initialInput || inputs,
+          threadId: undefined, // Will be set below
+        });
+
+        const nodeResults: Record<string, any> = {};
+
+        // Get API keys
+        const apiKeys = {
+          anthropic: process.env.ANTHROPIC_API_KEY,
+          groq: process.env.GROQ_API_KEY,
+          openai: process.env.OPENAI_API_KEY,
+          firecrawl: process.env.FIRECRAWL_API_KEY,
+          arcade: process.env.ARCADE_API_KEY,
+        };
+
         // LangGraph Execution Path
         const threadId = `thread_${workflowId}_${Date.now()}`;
+
+        // Update execution with threadId
+        await convex.mutation(api.executions.updateExecution, {
+          id: executionId,
+          variables: { threadId },
+        });
 
         let executor;
         try {
@@ -186,7 +197,7 @@ export async function POST(
         // Execute with streaming
         const executionStream = await executor.executeStream(initialInput, {
           threadId,
-          executionId,
+          executionId: executionId.toString(),
         });
 
         let finalState: any = null;
@@ -208,6 +219,7 @@ export async function POST(
               nodeResults: mergedState.nodeResults,
               currentNodeId: mergedState.currentNodeId,
               pendingAuth: mergedState.pendingAuth,
+              executionId: executionId.toString(),
               timestamp: new Date().toISOString(),
             });
 
@@ -216,13 +228,17 @@ export async function POST(
               sendEvent('workflow_paused', {
                 reason: 'pending_authorization',
                 pendingAuth: mergedState.pendingAuth,
-                executionId,
+                executionId: executionId.toString(),
                 threadId,
                 timestamp: new Date().toISOString(),
               });
 
-              // TODO: Save execution state to Convex for resume capability
-              // await convex.mutation(api.executions.createExecution, {...})
+              // Save execution state to Convex for resume capability
+              await convex.mutation(api.executions.updateExecution, {
+                id: executionId,
+                status: 'waiting-auth',
+                nodeResults: mergedState.nodeResults,
+              });
 
               controller.close();
               return;
@@ -230,6 +246,13 @@ export async function POST(
           }
         } catch (streamError) {
           console.error('Stream iteration error:', streamError);
+          
+          // Mark execution as failed in Convex
+          await convex.mutation(api.executions.completeExecution, {
+            id: executionId,
+            error: streamError instanceof Error ? streamError.message : 'Stream error',
+          });
+
           sendEvent('error', {
             error: streamError instanceof Error ? streamError.message : 'Stream error',
             timestamp: new Date().toISOString(),
@@ -241,16 +264,40 @@ export async function POST(
         // Send completion event
         const status = finalState?.pendingAuth ? 'waiting-auth' : 'completed';
 
+        // Extract final output text from the last node or finalOutput
+        let finalOutputText = '';
+        if (finalState?.finalOutput) {
+          finalOutputText = typeof finalState.finalOutput === 'string' 
+            ? finalState.finalOutput 
+            : JSON.stringify(finalState.finalOutput, null, 2);
+        } else if (finalState?.nodeResults) {
+          // Find the last completed node's output
+          const nodeIds = Object.keys(finalState.nodeResults);
+          if (nodeIds.length > 0) {
+            const lastNodeId = nodeIds[nodeIds.length - 1];
+            const lastResult = finalState.nodeResults[lastNodeId];
+            if (lastResult?.output) {
+              finalOutputText = typeof lastResult.output === 'string'
+                ? lastResult.output
+                : JSON.stringify(lastResult.output, null, 2);
+            }
+          }
+        }
+
         sendEvent('workflow_completed', {
           workflowId,
-          executionId,
+          executionId: executionId.toString(),
           results: finalState?.nodeResults || {},
           status,
           timestamp: new Date().toISOString(),
         });
 
-        // TODO: Save execution results to Convex
-        // await convex.mutation(api.executions.completeExecution, {...})
+        // Save execution results to Convex with extracted text output
+        await convex.mutation(api.executions.completeExecution, {
+          id: executionId,
+          output: finalOutputText || finalState?.nodeResults || {},
+          error: finalState?.error,
+        });
 
         controller.close();
       } catch (error) {

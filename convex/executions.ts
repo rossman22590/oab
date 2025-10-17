@@ -82,3 +82,35 @@ export const getWorkflowExecutions = query({
     return executions;
   },
 });
+
+// List all executions for the authenticated user
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      return [];
+    }
+
+    // Get all executions, ordered by most recent first
+    const executions = await ctx.db
+      .query("executions")
+      .order("desc")
+      .take(50); // Limit to 50 most recent
+
+    // Filter to only show executions for workflows owned by this user
+    const userExecutions: Array<any> = [];
+    for (const execution of executions) {
+      const workflow = await ctx.db.get(execution.workflowId);
+      if (workflow && workflow.userId === identity.subject) {
+        userExecutions.push({
+          ...execution,
+          workflowName: workflow.name,
+        });
+      }
+    }
+
+    return userExecutions;
+  },
+});

@@ -1310,7 +1310,7 @@ function WorkflowBuilderInner({ onBack, initialWorkflowId, initialTemplateId }: 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-0 bg-background-base flex flex-col"
+      className="fixed inset-0 bg-gradient-to-br from-gray-50 via-purple-50 to-pink-50 flex flex-col"
     >
       {/* Workflow Name Editor */}
       <WorkflowNameEditor

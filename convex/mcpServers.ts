@@ -160,18 +160,16 @@ export const seedOfficialMCPs = mutation({
     userId: v.string(),
   },
   handler: async ({ db }, { userId }) => {
-    // Check if user already has official MCPs
+    // Check which official MCPs already exist
     const existing = await db
       .query("mcpServers")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .filter((q) => q.eq(q.field("isOfficial"), true))
-      .first();
+      .collect();
 
-    if (existing) {
-      return { message: "Official MCPs already seeded" };
-    }
+    const existingNames = new Set(existing.map(mcp => mcp.name));
 
-    // Official MCP configuration - Only Firecrawl
+    // Official MCP configuration - Firecrawl + E2B
     const officialMCPs = [
       {
         name: "Firecrawl",
@@ -189,16 +187,31 @@ export const seedOfficialMCPs = mutation({
           "firecrawl_check_crawl_status"
         ],
       },
+      {
+        name: "E2B Code Interpreter",
+        url: "https://mcp.e2b.dev",
+        description: "Execute Python/JavaScript code in secure sandboxes",
+        category: "ai",
+        authType: "api-key",
+        tools: [
+          "execute_python",
+          "execute_javascript",
+          "run_sandbox",
+          "install_package"
+        ],
+      },
     ];
 
-    // Insert official MCPs for the user
+    // Insert only MCPs that don't exist yet
+    const toInsert = officialMCPs.filter(mcp => !existingNames.has(mcp.name));
+    
     const insertedIds = await Promise.all(
-      officialMCPs.map(mcp =>
+      toInsert.map(mcp =>
         db.insert("mcpServers", {
           userId,
           ...mcp,
           connectionStatus: "untested",
-          enabled: true, // Firecrawl enabled by default
+          enabled: true,
           isOfficial: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -206,7 +219,11 @@ export const seedOfficialMCPs = mutation({
       )
     );
 
-    return { message: "Official MCPs seeded", count: insertedIds.length };
+    return { 
+      message: `Official MCPs seeded: ${toInsert.map(m => m.name).join(", ")}`, 
+      count: insertedIds.length,
+      existing: existing.length
+    };
   },
 });
 
@@ -263,15 +280,16 @@ export const cleanupOfficialMCPs = mutation({
       .filter((q) => q.eq(q.field("isOfficial"), true))
       .collect();
 
-    // Delete any that are not Firecrawl
+    // Keep Firecrawl and E2B, delete others
+    const allowedNames = ["Firecrawl", "E2B Code Interpreter"];
     let deletedCount = 0;
     for (const mcp of officialMCPs) {
-      if (mcp.name !== "Firecrawl") {
+      if (!allowedNames.includes(mcp.name)) {
         await db.delete(mcp._id);
         deletedCount++;
       }
     }
 
-    return { message: `Cleaned up ${deletedCount} non-Firecrawl official MCPs` };
+    return { message: `Cleaned up ${deletedCount} unofficial MCPs` };
   },
 });

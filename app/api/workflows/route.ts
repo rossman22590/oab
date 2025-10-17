@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     if (!isConvexConfigured()) {
+      console.log('⚠️ Convex not configured');
       return NextResponse.json({
         workflows: [],
         total: 0,
@@ -18,8 +19,16 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    console.log('🔍 Fetching workflows from Convex...');
     const convex = await getAuthenticatedConvexClient();
     const workflows = await convex.query(api.workflows.listWorkflows, {});
+    console.log(`📦 Found ${workflows.length} workflows in Convex`);
+    console.log('Workflows:', workflows.map((w: any) => ({ 
+      id: w.customId || w._id, 
+      name: w.name, 
+      userId: w.userId,
+      isTemplate: w.isTemplate 
+    })));
 
     return NextResponse.json({
       workflows: workflows.map((w: any) => ({
@@ -41,7 +50,7 @@ export async function GET(request: NextRequest) {
       source: 'convex',
     });
   } catch (error) {
-    console.error('Error fetching workflows:', error);
+    console.error('❌ Error fetching workflows:', error);
     return NextResponse.json(
       {
         error: 'Failed to fetch workflows',

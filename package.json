@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "lsof -ti:3000,3001 | xargs kill -9 2>/dev/null || true && next dev",
+    "dev": "cmd.exe /c \"for /f \"tokens=5\" %p in ('netstat -aon | findstr :3000') do taskkill /f /pid %p 2>nul\" & cmd.exe /c \"for /f \"tokens=5\" %p in ('netstat -aon | findstr :3001') do taskkill /f /pid %p 2>nul\" & next dev",
     "dev:all": "concurrently \"npx convex dev\" \"npm run dev\"",
     "build": "next build",
     "start": "next start",
@@ -90,6 +90,7 @@
     "next": "^16.0.0-canary.8",
     "node-fetch": "^3.3.2",
     "nuqs": "^2.3.1",
+    "ogl": "^1.0.11",
     "openai": "^5.13.1",
     "pixi.js": "^8.9.0",
     "prismjs": "^1.29.0",

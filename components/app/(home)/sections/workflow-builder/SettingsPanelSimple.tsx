@@ -112,16 +112,13 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     if (isOpen) {
       loadConfig();
 
-      // Clean up any non-Firecrawl official MCPs and seed only Firecrawl
-      if (user?.id && mcpServers) {
-        // First clean up any non-Firecrawl official MCPs
+      // Clean up and seed official MCPs (Firecrawl + E2B)
+      if (user?.id && mcpServers !== undefined) {
+        // First clean up any unofficial MCPs
         cleanupOfficialMCPs({ userId: user.id }).catch(console.error);
 
-        // Then seed Firecrawl if no MCPs exist
-        const hasFirecrawl = mcpServers.some(mcp => mcp.name === "Firecrawl" && mcp.isOfficial);
-        if (!hasFirecrawl) {
-          seedOfficialMCPs({ userId: user.id }).catch(console.error);
-        }
+        // Always seed - the function will only add missing MCPs
+        seedOfficialMCPs({ userId: user.id }).catch(console.error);
       }
     }
   }, [isOpen, user?.id, mcpServers?.length]);
@@ -285,6 +282,15 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <div>
                   <h3 className="text-label-large font-medium text-accent-black mb-12">Your API Keys</h3>
 
+                  {/* Show sign-in message if not authenticated */}
+                  {!user?.id && (
+                    <div className="p-16 bg-secondary-4 border border-secondary-100 rounded-8 mb-12">
+                      <p className="text-body-small text-accent-black">
+                        <strong>Sign in required:</strong> Please sign in to generate and manage API keys.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Show generated key once */}
                   {generatedKey && (
                     <div className="p-16 bg-heat-4 border border-heat-100 rounded-8 mb-12">
@@ -330,24 +336,34 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       placeholder="Key name (e.g., Production)"
                       value={newKeyName}
                       onChange={(e) => setNewKeyName(e.target.value)}
-                      className="flex-1 px-12 py-8 bg-background-base border border-border-faint rounded-8 text-body-small text-accent-black placeholder:text-black-alpha-32"
+                      disabled={!user?.id}
+                      className="flex-1 px-12 py-8 bg-background-base border border-border-faint rounded-8 text-body-small text-accent-black placeholder:text-black-alpha-32 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <button
+                      disabled={!user?.id}
                       onClick={async () => {
+                        if (!user?.id) {
+                          toast.error('Please sign in to generate API keys');
+                          return;
+                        }
                         if (!newKeyName.trim()) {
                           toast.error('Please enter a key name');
                           return;
                         }
-                        const result = await generateKey({ name: newKeyName.trim() });
-                        setGeneratedKey(result.key);
-                        setNewKeyName("");
+                        try {
+                          const result = await generateKey({ name: newKeyName.trim() });
+                          setGeneratedKey(result.key);
+                          setNewKeyName("");
 
-                        // Store in sessionStorage for curl examples
-                        if (typeof window !== 'undefined') {
-                          sessionStorage.setItem('latest_api_key', result.key);
+                          // Store in sessionStorage for curl examples
+                          if (typeof window !== 'undefined') {
+                            sessionStorage.setItem('latest_api_key', result.key);
+                          }
+
+                          toast.success('API key generated');
+                        } catch (error) {
+                          toast.error('Failed to generate API key. Please sign in.');
                         }
-
-                        toast.success('API key generated');
                       }}
                       className="px-16 py-8 bg-heat-100 hover:bg-heat-200 text-white rounded-8 text-body-small font-medium transition-all active:scale-[0.98] flex items-center gap-6"
                     >
@@ -864,8 +880,8 @@ function MCPCard({
               <div>
                 <p className="text-xs text-black-alpha-48 mb-4">Available Tools ({server.tools.length})</p>
                 <div className="flex flex-wrap gap-4">
-                  {server.tools.map((tool) => (
-                    <span key={tool} className="px-8 py-4 bg-black-alpha-4 text-xs text-accent-black rounded-4">
+                  {server.tools.map((tool, index) => (
+                    <span key={`${tool}-${index}`} className="px-8 py-4 bg-black-alpha-4 text-xs text-accent-black rounded-4">
                       {tool}
                     </span>
                   ))}
@@ -1112,8 +1128,8 @@ function AddMCPModal({ isOpen, onClose, onSave, editingServer }: AddMCPModalProp
               </label>
               <div className="p-12 bg-heat-4 rounded-8 border border-heat-100">
                 <div className="flex flex-wrap gap-4">
-                  {discoveredTools.map((tool) => (
-                    <span key={tool} className="px-6 py-2 bg-white text-heat-100 rounded-4 text-xs font-medium border border-heat-100">
+                  {discoveredTools.map((tool, index) => (
+                    <span key={`discovered-${tool}-${index}`} className="px-6 py-2 bg-white text-heat-100 rounded-4 text-xs font-medium border border-heat-100">
                       {tool}
                     </span>
                   ))}
