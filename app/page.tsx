@@ -131,11 +131,25 @@ function LandingPageContent() {
           {/* Navigation */}
           <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-border-faint">
             <div className="max-w-7xl mx-auto px-20 py-16 flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-gray-900">
-                <span className="text-pink-500">AI</span> Workflow Builder
-              </h1>
+              <div className="flex items-center gap-48">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  <span className="text-pink-500">AI</span> Workflow Builder
+                </h1>
+                <a 
+                  href="https://ai-tutor-flow.vercel.app/?view=workflows"
+                  className="text-base font-medium text-gray-700 hover:text-pink-500 transition-colors"
+                >
+                  Builder
+                </a>
+                <a 
+                  href="https://account.myapps.ai"
+                  className="text-base font-medium text-gray-700 hover:text-pink-500 transition-colors"
+                >
+                  Manage Account
+                </a>
+              </div>
               
-              <div className="flex items-center gap-12">
+              <div className="flex items-center gap-16">
                 <SignedOut>
                   <SignInButton mode="modal">
                     <button className="px-20 py-10 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white rounded-full font-semibold transition-all active:scale-95">

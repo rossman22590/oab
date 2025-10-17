@@ -27,6 +27,9 @@ export default function Navbar() {
 
           {/* Desktop Navigation - Center */}
           <div className="hidden md:flex items-center gap-4">
+            <Link href="https://ai-tutor-flow.vercel.app/?view=workflows" className="px-7 py-3.5 text-xl text-purple-200 hover:text-pink-300 hover:bg-white/5 rounded-xl transition-all font-bold">
+              Workflows
+            </Link>
             <Link href="#features" className="px-7 py-3.5 text-xl text-purple-200 hover:text-pink-300 hover:bg-white/5 rounded-xl transition-all font-bold">
               Features
             </Link>
@@ -85,6 +88,13 @@ export default function Navbar() {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden mt-4 pb-4 space-y-2 border-t border-white/10 pt-4"
           >
+            <Link 
+              href="https://ai-tutor-flow.vercel.app/?view=workflows" 
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-purple-200 hover:text-pink-300 hover:bg-white/5 rounded-lg transition-all py-3 px-4"
+            >
+              Workflows
+            </Link>
             <Link 
               href="#features" 
               onClick={() => setMobileMenuOpen(false)}
